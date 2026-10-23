@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Nexus Extension Drawer",
+  "version": "1.0.0",
+  "description": "Range tes extensions dans un menu propre. Contourne la limite de la barre d'outils Firefox.",
+  "permissions": ["management", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Nexus Drawer",
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "icons": {
+    "48": "icon.png"
+  }
+}

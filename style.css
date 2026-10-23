@@ -1,0 +1,43 @@
+:root {
+    --bg: #0a0a0f;
+    --panel: #151520;
+    --accent: #00ff9d;
+    --text: #e0e0e0;
+    --border: #2a2a3a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { width: 350px; background: var(--bg); color: var(--text); overflow: hidden; }
+
+.header { padding: 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
+h1 { font-size: 1rem; color: var(--accent); margin-bottom: 10px; letter-spacing: 1px; }
+input {
+    width: 100%; padding: 8px 12px;
+    background: #000; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); outline: none;
+}
+input:focus { border-color: var(--accent); }
+
+.grid { padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+
+.ext-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; transition: all 0.2s;
+}
+.ext-item:hover { border-color: var(--accent); background: #1a1a2e; }
+.ext-icon { width: 24px; height: 24px; border-radius: 4px; }
+.ext-info { flex: 1; overflow: hidden; }
+.ext-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-desc { font-size: 0.7rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.btn-toggle {
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: bold;
+    border: none; cursor: pointer; transition: 0.2s;
+}
+.btn-on { background: rgba(0,255,157,0.2); color: var(--accent); border: 1px solid var(--accent); }
+.btn-off { background: rgba(255,50,50,0.2); color: #ff3232; border: 1px solid #ff3232; }
+.btn-toggle:hover { transform: scale(1.05); }
+
+.loading { text-align: center; padding: 20px; color: #888; font-size: 0.8rem; }
