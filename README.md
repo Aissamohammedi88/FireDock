@@ -135,3 +135,52 @@ cd TidyFox
 # Lancer le script de build
 chmod +x build.sh
 ./build.sh
+Le script génère un fichier TidyFox.xpi prêt à être installé.
+🤝 Contribuer
+
+Les contributions sont les bienvenues. Ouvre une issue pour signaler un bug, ou fais une Pull Request pour ajouter une fonctionnalité.
+
+Idées d'amélioration :
+
+    □
+
+    Ajouter des catégories (Dev, Productivité, Sécurité, etc.)
+    □
+
+    Synchroniser les catégories entre appareils via storage.sync
+    □
+
+    Ajouter un thème sombre/clair
+    □
+
+    Ajouter un mode "compact" pour les petits écrans
+
+📜 License
+
+NEXUS-OPEN-3.0 — Voir LICENSE pour les détails.
+
+    Gratuit pour usage personnel, éducatif et de recherche.
+
+    Usage commercial autorisé avec attribution.
+
+    Modifications à documenter.
+
+<div align="center"><svg width="600" height="40" viewBox="0 0 600 40" xmlns="http://www.w3.org/2000/svg"> <defs> <linearGradient id="endGrad" x1="0%" y1="0%" x2="100%" y2="0%"> <stop offset="0%" stop-color="#ff6b35" stop-opacity="0"/> <stop offset="50%" stop-color="#ffaa00" stop-opacity="1"/> <stop offset="100%" stop-color="#ff6b35" stop-opacity="0"/> </linearGradient> </defs> <line x1="0" y1="20" x2="600" y2="20" stroke="url(#endGrad)" stroke-width="2"/> <text x="300" y="28" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#a0a0a0" font-style="italic"> « Un navigateur propre est un navigateur souverain. » <animate attributeName="opacity" values="0.4;1;0.4" dur="4s" repeatCount="indefinite"/> </text> </svg>
+
+Made with 🦊 by Aissa Mohammedi (DGK) · 2026 · NEXUS OPEN SOURCE
+</div> ```
+🎯 Les "Topics" GitHub (À ajouter)
+
+Une fois le dépôt créé, ajoute ces tags dans les "Topics" (à droite du dépôt) pour que les gens le trouvent :
+text
+
+firefox
+firefox-extension
+webextension
+extension-manager
+toolbar
+productivity
+open-source
+privacy
+sovereign
+tidyfox
