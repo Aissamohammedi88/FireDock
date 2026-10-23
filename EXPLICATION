@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# NEXUS EXTENSION DRAWER — Localhost Preview (Port 9933)
+# Génère une extension Firefox qui contourne la limite des icônes.
+# Auteur : Aissa Mohammedi (DGK)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+set -euo pipefail
+
+PORT=9933
+EXT_DIR="/tmp/nexus-extension-drawer"
+HTML_FILE="/tmp/nexus_extension_preview.html"
+
+echo -e "\033[1;35m╔══════════════════════════════════════════════════════════════╗\033[0m"
+echo -e "\033[1;35m║   NEXUS EXTENSION DRAWER — GENERATION & PREVIEW              ║\033[0m"
+echo -e "\033[1;35m╚══════════════════════════════════════════════════════════════╝\033[0m"
+
+# 1. Création du dossier de l'extension
+mkdir -p "$EXT_DIR"
+
+# 2. Génération du manifest.json
+cat > "$EXT_DIR/manifest.json" << 'EOF'
+{
+  "manifest_version": 3,
+  "name": "Nexus Extension Drawer",
+  "version": "1.0.0",
+  "description": "Range tes extensions dans un menu propre. Contourne la limite de la barre d'outils Firefox.",
+  "permissions": ["management", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Nexus Drawer"
+  },
+  "icons": {
+    "48": "icon.png"
+  }
+}
+EOF
+
+# 3. Génération du popup.html
+cat > "$EXT_DIR/popup.html" << 'EOF'
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ NEXUS DRAWER</h1>
+        <input type="text" id="search" placeholder="Rechercher une extension...">
+    </div>
+    <div id="extension-list" class="grid">
+        <div class="loading">Chargement des extensions...</div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
+EOF
+
+# 4. Génération du style.css
+cat > "$EXT_DIR/style.css" << 'EOF'
+:root {
+    --bg: #0a0a0f;
+    --panel: #151520;
+    --accent: #00ff9d;
+    --text: #e0e0e0;
+    --border: #2a2a3a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { width: 350px; background: var(--bg); color: var(--text); overflow: hidden; }
+
+.header { padding: 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
+h1 { font-size: 1rem; color: var(--accent); margin-bottom: 10px; letter-spacing: 1px; }
+input {
+    width: 100%; padding: 8px 12px;
+    background: #000; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); outline: none;
+}
+input:focus { border-color: var(--accent); }
+
+.grid { padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+
+.ext-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; transition: all 0.2s;
+}
+.ext-item:hover { border-color: var(--accent); background: #1a1a2e; }
+.ext-icon { width: 24px; height: 24px; border-radius: 4px; }
+.ext-info { flex: 1; overflow: hidden; }
+.ext-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-desc { font-size: 0.7rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.btn-toggle {
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: bold;
+    border: none; cursor: pointer; transition: 0.2s;
+}
+.btn-on { background: rgba(0,255,157,0.2); color: var(--accent); border: 1px solid var(--accent); }
+.btn-off { background: rgba(255,50,50,0.2); color: #ff3232; border: 1px solid #ff3232; }
+.btn-toggle:hover { transform: scale(1.05); }
+
+.loading { text-align: center; padding: 20px; color: #888; font-size: 0.8rem; }
+EOF
+
+# 5. Génération du popup.js (Le Cœur du système)
+cat > "$EXT_DIR/popup.js" << 'EOF'
+document.addEventListener('DOMContentLoaded', async () => {
+    const listEl = document.getElementById('extension-list');
+    const searchEl = document.getElementById('search');
+    let allExtensions = [];
+
+    // 1. Récupérer toutes les extensions installées
+    try {
+        const extensions = await browser.management.getAll();
+        // Filtrer pour ne garder que les extensions (pas les thèmes)
+        allExtensions = extensions.filter(ext => ext.type === 'extension' && ext.id !== browser.runtime.id);
+        
+        renderExtensions(allExtensions);
+    } catch (e) {
+        listEl.innerHTML = `<div class="loading">Erreur : ${e.message}</div>`;
+    }
+
+    // 2. Fonction de rendu
+    function renderExtensions(exts) {
+        if (exts.length === 0) {
+            listEl.innerHTML = '<div class="loading">Aucune extension trouvée.</div>';
+            return;
+        }
+        
+        listEl.innerHTML = '';
+        exts.forEach(ext => {
+            const item = document.createElement('div');
+            item.className = 'ext-item';
+            
+            const iconUrl = ext.icons ? ext.icons[0].url : 'icon.png';
+            const stateClass = ext.enabled ? 'btn-on' : 'btn-off';
+            const stateText = ext.enabled ? 'ON' : 'OFF';
+
+            item.innerHTML = `
+                <img src="${iconUrl}" class="ext-icon">
+                <div class="ext-info">
+                    <div class="ext-name">${ext.name}</div>
+                    <div class="ext-desc">${ext.description || 'Pas de description'}</div>
+                </div>
+                <button class="btn-toggle ${stateClass}">${stateText}</button>
+            `;
+
+            // Gérer l'activation/désactivation au clic
+            item.querySelector('.btn-toggle').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const newState = !ext.enabled;
+                await browser.management.setEnabled(ext.id, newState);
+                ext.enabled = newState;
+                renderExtensions(exts); // Re-render
+            });
+
+            listEl.appendChild(item);
+        });
+    }
+
+    // 3. Gérer la recherche
+    searchEl.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = allExtensions.filter(ext => 
+            ext.name.toLowerCase().includes(query) || 
+            (ext.description && ext.description.toLowerCase().includes(query))
+        );
+        renderExtensions(filtered);
+    });
+});
+EOF
+
+# 6. Génération de l'icône (placeholder)
+echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 -d > "$EXT_DIR/icon.png"
+
+# 7. Créer le fichier HTML de prévisualisation (pour le port 9933)
+cat > "$HTML_FILE" << 'HTML_PREVIEW'
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Nexus Extension Drawer — Preview</title>
+    <style>
+        body { background: #05050a; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { text-align: center; }
+        h1 { color: #00ff9d; text-shadow: 0 0 10px #00ff9d; }
+        p { color: #888; margin-bottom: 20px; }
+        .steps { text-align: left; display: inline-block; background: #151520; padding: 20px; border-radius: 10px; border: 1px solid #2a2a3a; }
+        li { margin-bottom: 10px; color: #ccc; }
+        code { background: #000; padding: 2px 6px; border-radius: 4px; color: #00ff9d; }
+        .btn { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #00ff9d; color: #000; text-decoration: none; border-radius: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ NEXUS EXTENSION DRAWER</h1>
+        <p>Ton extension est prête à être chargée dans Firefox.</p>
+        
+        <div class="steps">
+            <h3>Comment l'installer :</h3>
+            <ul>
+                <li>1. Ouvre Firefox et tape <code>about:debugging</code> dans la barre d'adresse.</li>
+                <li>2. Clique sur <b>"Ce Firefox"</b> (This Firefox) à gauche.</li>
+                <li>3. Clique sur <b>"Charger un module temporaire..."</b>.</li>
+                <li>4. Sélectionne le fichier : <code>/tmp/nexus-extension-drawer/manifest.json</code></li>
+                <li>5. Clique sur l'icône de l'extension dans ta barre d'outils. 🎉</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 20px; color: #666; font-size: 0.8rem;">
+            <p>Le dossier de l'extension est situé dans : <code>/tmp/nexus-extension-drawer/</code></p>
+            <p>Généré par <b>NEXUS</b> — Aissa Mohammedi (DGK)</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML_PREVIEW
+
+echo -e "  \033[1;32m[✓]\033[0m Extension générée dans : \033[1;36m$EXT_DIR\033[0m"
+echo -e "  \033[1;32m[✓]\033[0m Preview disponible sur : \033[4mhttp://localhost:$PORT\033[0m"
+
+# 8. Serveur HTTP pour la prévisualisation
+handle_request() {
+    local request_line
+    read -r request_line
+    local path=$(echo "$request_line" | awk '{print $2}')
+    while IFS= read -r line && [[ -n "$line" && "$line" != $'\r' ]]; do :; done
+
+    if [[ "$path" == "/" || "$path" == "/index.html" ]]; then
+        local len=$(wc -c < "$HTML_FILE")
+        printf 'HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: close\r\n\r\n' "$len"
+        cat "$HTML_FILE"
+    else
+        printf 'HTTP/1.1 404 Not Found\r\n\r\n404'
+    fi
+}
+export -f handle_request
+export HTML_FILE
+
+# Lancer le serveur en arrière-plan
+echo -e "\n  \033[1;33mCtrl+C pour arrêter le serveur.\033[0m\n"
+trap 'echo -e "\n\033[1;31m[✗] Serveur arrêté.\033[0m"; exit 0' INT TERM
+
+if command -v xdg-open >/dev/null 2>&1; then
+    sleep 1
+    xdg-open "http://localhost:$PORT" &
+fi
+
+if command -v socat >/dev/null 2>&1; then
+    socat TCP-LISTEN:$PORT,reuseaddr,fork EXEC:"bash -c 'handle_request'"
+elif command -v nc >/dev/null 2>&1; then
+    while true; do nc -l -p $PORT -c "bash -c 'handle_request'" 2>/dev/null || nc -l -p $PORT < /dev/null | bash -c 'handle_request'; done
+else
+    echo "Erreur : installer socat ou netcat."
+    exit 1
+fi
