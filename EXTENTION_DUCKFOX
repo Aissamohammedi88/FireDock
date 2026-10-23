@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# NEXUS EXTENSION DRAWER — BUILDER
+# Crée l'extension sur le Bureau et génère le fichier .xpi
+# Auteur : Aissa Mohammedi (DGK)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+set -euo pipefail
+
+# Détection du dossier Bureau (Desktop ou Bureau)
+if [ -d "$HOME/Desktop" ]; then
+    DESKTOP="$HOME/Desktop"
+elif [ -d "$HOME/Bureau" ]; then
+    DESKTOP="$HOME/Bureau"
+else
+    DESKTOP="$HOME"
+fi
+
+EXT_NAME="Nexus-Extension-Drawer"
+EXT_DIR="$DESKTOP/$EXT_NAME"
+XPI_FILE="$DESKTOP/$EXT_NAME.xpi"
+
+echo -e "\033[1;35m╔══════════════════════════════════════════════════════════════╗\033[0m"
+echo -e "\033[1;35m║   NEXUS EXTENSION DRAWER — BUILDER                           ║\033[0m"
+echo -e "\033[1;35m╚══════════════════════════════════════════════════════════════╝\033[0m"
+
+# 1. Nettoyage et création du dossier
+rm -rf "$EXT_DIR"
+mkdir -p "$EXT_DIR"
+echo -e "  \033[1;32m[✓]\033[0m Dossier créé : $EXT_DIR"
+
+# 2. manifest.json
+cat > "$EXT_DIR/manifest.json" << 'EOF'
+{
+  "manifest_version": 3,
+  "name": "Nexus Extension Drawer",
+  "version": "1.0.0",
+  "description": "Range tes extensions dans un menu propre. Contourne la limite de la barre d'outils Firefox.",
+  "permissions": ["management", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Nexus Drawer",
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "icons": {
+    "48": "icon.png"
+  }
+}
+EOF
+echo -e "  \033[1;32m[✓]\033[0m manifest.json généré"
+
+# 3. popup.html
+cat > "$EXT_DIR/popup.html" << 'EOF'
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ NEXUS DRAWER</h1>
+        <input type="text" id="search" placeholder="Rechercher une extension...">
+    </div>
+    <div id="extension-list" class="grid">
+        <div class="loading">Chargement des extensions...</div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
+EOF
+echo -e "  \033[1;32m[✓]\033[0m popup.html généré"
+
+# 4. style.css
+cat > "$EXT_DIR/style.css" << 'EOF'
+:root {
+    --bg: #0a0a0f;
+    --panel: #151520;
+    --accent: #00ff9d;
+    --text: #e0e0e0;
+    --border: #2a2a3a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { width: 350px; background: var(--bg); color: var(--text); overflow: hidden; }
+
+.header { padding: 15px; background: var(--panel); border-bottom: 1px solid var(--border); }
+h1 { font-size: 1rem; color: var(--accent); margin-bottom: 10px; letter-spacing: 1px; }
+input {
+    width: 100%; padding: 8px 12px;
+    background: #000; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); outline: none;
+}
+input:focus { border-color: var(--accent); }
+
+.grid { padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+
+.ext-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; transition: all 0.2s;
+}
+.ext-item:hover { border-color: var(--accent); background: #1a1a2e; }
+.ext-icon { width: 24px; height: 24px; border-radius: 4px; }
+.ext-info { flex: 1; overflow: hidden; }
+.ext-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-desc { font-size: 0.7rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.btn-toggle {
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: bold;
+    border: none; cursor: pointer; transition: 0.2s;
+}
+.btn-on { background: rgba(0,255,157,0.2); color: var(--accent); border: 1px solid var(--accent); }
+.btn-off { background: rgba(255,50,50,0.2); color: #ff3232; border: 1px solid #ff3232; }
+.btn-toggle:hover { transform: scale(1.05); }
+
+.loading { text-align: center; padding: 20px; color: #888; font-size: 0.8rem; }
+EOF
+echo -e "  \033[1;32m[✓]\033[0m style.css généré"
+
+# 5. popup.js
+cat > "$EXT_DIR/popup.js" << 'EOF'
+document.addEventListener('DOMContentLoaded', async () => {
+    const listEl = document.getElementById('extension-list');
+    const searchEl = document.getElementById('search');
+    let allExtensions = [];
+
+    try {
+        const extensions = await browser.management.getAll();
+        allExtensions = extensions.filter(ext => ext.type === 'extension' && ext.id !== browser.runtime.id);
+        renderExtensions(allExtensions);
+    } catch (e) {
+        listEl.innerHTML = `<div class="loading">Erreur : ${e.message}</div>`;
+    }
+
+    function renderExtensions(exts) {
+        if (exts.length === 0) {
+            listEl.innerHTML = '<div class="loading">Aucune extension trouvée.</div>';
+            return;
+        }
+        listEl.innerHTML = '';
+        exts.forEach(ext => {
+            const item = document.createElement('div');
+            item.className = 'ext-item';
+            
+            // Récupérer l'icône (prendre la plus grande disponible)
+            let iconUrl = 'icon.png';
+            if (ext.icons && ext.icons.length > 0) {
+                const sortedIcons = ext.icons.sort((a, b) => (b.size || 0) - (a.size || 0));
+                iconUrl = sortedIcons[0].url;
+            }
+
+            const stateClass = ext.enabled ? 'btn-on' : 'btn-off';
+            const stateText = ext.enabled ? 'ON' : 'OFF';
+
+            item.innerHTML = `
+                <img src="${iconUrl}" class="ext-icon" onerror="this.src='icon.png'">
+                <div class="ext-info">
+                    <div class="ext-name">${ext.name}</div>
+                    <div class="ext-desc">${ext.description || 'Pas de description'}</div>
+                </div>
+                <button class="btn-toggle ${stateClass}">${stateText}</button>
+            `;
+
+            item.querySelector('.btn-toggle').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const newState = !ext.enabled;
+                try {
+                    await browser.management.setEnabled(ext.id, newState);
+                    ext.enabled = newState;
+                    renderExtensions(exts);
+                } catch (err) {
+                    alert("Erreur: " + err.message);
+                }
+            });
+
+            listEl.appendChild(item);
+        });
+    }
+
+    searchEl.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = allExtensions.filter(ext => 
+            ext.name.toLowerCase().includes(query) || 
+            (ext.description && ext.description.toLowerCase().includes(query))
+        );
+        renderExtensions(filtered);
+    });
+});
+EOF
+echo -e "  \033[1;32m[✓]\033[0m popup.js généré"
+
+# 6. icon.png (génération d'une icône simple en base64)
+# Une icône carrée verte de 48x48
+echo "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADPSURBVGhD7drBCcMwDIXhJXqIjuAhOoKH6AgdoSN0hI7gITqCh+gIHqIjeIiO4CE6QofwEB3CQ3QID9EhPESH8BAdwkN0CA/RIWzDtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtmzLtvwHX+8B1Z1F5q8AAAAASUVORK5CYII=" | base64 -d > "$EXT_DIR/icon.png"
+echo -e "  \033[1;32m[✓]\033[0m icon.png généré"
+
+# 7. Création du fichier ZIP renommé en .xpi
+rm -f "$XPI_FILE"
+cd "$EXT_DIR"
+zip -r "$XPI_FILE" . -x ".*" -x "__MACOSX" > /dev/null
+echo -e "  \033[1;32m[✓]\033[0m Fichier .xpi généré : $XPI_FILE"
+
+echo ""
+echo -e "\033[1;32m╔══════════════════════════════════════════════════════════════╗\033[0m"
+echo -e "\033[1;32m║   INSTALLATION TERMINÉE                                     ║\033[0m"
+echo -e "\033[1;32m╚══════════════════════════════════════════════════════════════╝\033[0m"
+echo ""
+echo -e "  Dossier de l'extension : \033[1;36m$EXT_DIR\033[0m"
+echo -e "  Fichier .xpi généré    : \033[1;36m$XPI_FILE\033[0m"
+echo ""
+echo -e "  \033[1;33mCOMMENT INSTALLER DANS FIREFOX :\033[0m"
+echo -e "  \033[1;33m──────────────────────────────────────────────────────────────\033[0m"
+echo -e "  1. Ouvre Firefox."
+echo -e "  2. Tape \033[1;36mabout:debugging\033[0m dans la barre d'adresse."
+echo -e "  3. Clique sur \033[1;36m'Ce Firefox'\033[0m à gauche."
+echo -e "  4. Clique sur \033[1;36m'Charger un module temporaire...'\033[0m."
+echo -e "  5. Sélectionne le fichier : \033[1;36m$EXT_DIR/manifest.json\033[0m"
+echo -e "  6. L'icône 'Nexus Drawer' apparaît dans ta barre d'outils. Clique dessus ! 🎉"
+echo ""
+echo -e "  \033[1;33mPOUR UNE INSTALLATION PERMANENTE :\033[0m"
+echo -e "  \033[1;33m──────────────────────────────────────────────────────────────\033[0m"
+echo -e "  Le fichier .xpi nécessite une signature de Mozilla pour être installé"
+echo -e "  de façon permanente. Va sur \033[1;36mhttps://addons.mozilla.org/developers/\033[0m"
+echo -e "  et soumets le fichier .xpi pour signature."
+echo ""
